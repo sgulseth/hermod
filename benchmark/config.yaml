@@ -1,0 +1,15 @@
+config:
+  target: ws://localhost:8080/
+  phases:
+    - duration: 20
+      arrivalRate: 10
+  ws:
+    # Ignore SSL certificate errors
+    # - useful in *development* with self-signed certs
+    rejectUnauthorized: false
+scenarios:
+  - engine: ws
+    flow:
+      - send: subscribe:channel
+      - think: 10
+      - send: unsubscribe:channel
