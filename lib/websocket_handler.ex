@@ -11,35 +11,37 @@ defmodule Hermod.WebsocketHandler do
 
   ## Callbacks
 
-  def websocket_init(_type, req, _opts) do
-    {:ok, req, %{}, @timeout}
+  def websocket_init(state) do
+    Hermod.StatsHandler.increment_clients()
+    {:ok, state}
   end
 
-  def websocket_handle({:text, "ping"}, req, state) do
-    {:reply, {:text, "pong"}, req, state}
+  def websocket_handle({:text, "ping"}, state) do
+    {:reply, {:text, "pong"}, state}
   end
 
-  def websocket_handle({:text, "subscribe:" <> topic}, req, state) do
+  def websocket_handle({:text, "subscribe:" <> topic}, state) do
     RedisHandler.subscribe(topic)
 
-    {:ok, req, state}
+    {:ok, state}
   end
-  def websocket_handle({:text, "unsubscribe:" <> topic}, req, state) do
+  def websocket_handle({:text, "unsubscribe:" <> topic}, state) do
     RedisHandler.unsubscribe(topic)
 
-    {:ok, req, state}
+    {:ok, state}
   end
-  def websocket_handle({:text, _}, req, state) do
-    {:reply, {:text, "unknown_command"}, req, state}
-  end
-
-  def websocket_info(message, req, state) do
-    {:reply, {:text, message}, req, state}
+  def websocket_handle({:text, _}, state) do
+    {:reply, {:text, "unknown_command"}, state}
   end
 
-  def terminate(_reason, req, state) do
+  def websocket_info(message, state) do
+    {:reply, {:text, message}, state}
+  end
+
+  def terminate(_reason, _, state) do
     RedisHandler.cleanup()
-    {:ok, req, state}
+    Hermod.StatsHandler.decrement_clients()
+    {:ok, state}
   end
 
 end

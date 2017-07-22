@@ -3,10 +3,9 @@ defmodule Hermod do
 
   def start(_type, _args) do
     Logger.info "Starting Hermod ws<->pubsub on :#{Hermod.Settings.ws_port} with prefix #{Hermod.Settings.prefix}"
-    { :ok, _ } = :cowboy.start_http(:http,
-                                    100,
+    { :ok, _ } = :cowboy.start_clear(:http,
                                    [{:port, Hermod.Settings.ws_port}],
-                                   [{ :env, [{:dispatch, dispatch()}]}]
+                                   %{ env: %{ dispatch: dispatch() } }
                                    )
     Hermod.Supervisor.start_link
 
@@ -17,7 +16,8 @@ defmodule Hermod do
       { :_,
         [
           {"/", Hermod.WebsocketHandler, []},
-          {:_, HttpHandler, []}
+          {"/stats", Hermod.Http.StatsHandler, []},
+          {:_, Hermod.Http.DefaultHandler, []}
       ]}
     ])
   end

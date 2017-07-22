@@ -7,6 +7,7 @@ defmodule Hermod.Supervisor do
 
   def init(_) do
     children = [
+      worker(Hermod.StatsHandler, []),
       worker(Hermod.RedisHandler, [])
     ]
 

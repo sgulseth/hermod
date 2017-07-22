@@ -45,7 +45,7 @@ defmodule Hermod.RedisHandler do
       :ok = Redix.PubSub.subscribe(conn, "#{@prefix}:#{channel}", self())
     end
 
-    {:reply, :ok, state}
+    { :reply, :ok, state }
   end
 
   def handle_call({:unsubscribe, channel}, {pid, _}, %{conn: conn} = state) do
@@ -55,7 +55,7 @@ defmodule Hermod.RedisHandler do
       :ok = Redix.PubSub.unsubscribe(conn, "#{@prefix}:#{channel}", self())
     end
 
-    {:reply, :ok, state}
+    { :reply, :ok, state }
   end
 
   def handle_call({ :cleanup }, {pid, _}, %{conn: conn} = state) do
@@ -89,6 +89,7 @@ defmodule Hermod.RedisHandler do
     channels = if(MapSet.member?(channelPids, pid) == false, do: Map.put(channels, channel, MapSet.put(channelPids, pid)), else: channels)
 
     Logger.debug "subscribing process to #{channel}"
+    Hermod.StatsHandler.increment_channel_clients(channel)
 
     { :ok, new_channel, %{state | channels: channels} }
   end
@@ -100,6 +101,7 @@ defmodule Hermod.RedisHandler do
     empty_channel = MapSet.size(Map.get(channels, channel, MapSet.new)) == 0
 
     Logger.debug "unsubscribing process to #{channel}"
+    Hermod.StatsHandler.decrement_channel_clients(channel)
 
     { :ok, empty_channel, %{state | channels: channels} }
   end

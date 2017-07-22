@@ -28,10 +28,10 @@ defmodule Hermod.Mixfile do
   #
   # Type `mix help deps` for more examples and options
   defp deps() do
-    [ { :cowboy, github: "ninenines/cowboy", tag: "2.0.0-pre.3" },
-      { :jsex, "~> 2.0.0" },
+    [ { :cowboy, github: "ninenines/cowboy", tag: "2.0.0-pre.10" },
       { :redix_pubsub, ">= 0.0.0" },
-      {:env_helper, "~> 0.0.1"},
-      {:distillery, "~> 1.4", runtime: false}]
+      { :poison, "~> 3.1" },
+      { :env_helper, "~> 0.0.1" },
+      { :distillery, "~> 1.4", runtime: false } ]
   end
 end

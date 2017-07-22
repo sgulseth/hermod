@@ -1,15 +1,13 @@
-defmodule HttpHandler do
+defmodule Hermod.Http.DefaultHandler do
   def init(req, state) do
     handle(req, state)
   end
 
   def handle(request, state) do
-    req = :cowboy_req.reply(
-      200,
-      [ {"content-type", "text/html"} ],
-      build_body(request),
-      request
-    )
+    req = :cowboy_req.reply(200,
+      %{
+        "content-type" => "text/html"
+      }, build_body(request), request)
 
     {:ok, req, state}
   end
@@ -19,7 +17,7 @@ defmodule HttpHandler do
     :ok
   end
 
-  def build_body(request) do
+  def build_body(_request) do
     """
     <html>
     <head>
