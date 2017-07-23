@@ -35,6 +35,7 @@ defmodule Hermod.StatsHandler do
   def init(:ok) do
     state = %{
       clients: 0,
+      clients_peak: 0,
       connects: 0,
       disconnects: 0,
       messages: 0,
@@ -49,11 +50,12 @@ defmodule Hermod.StatsHandler do
     { :reply, :ok, state }
   end
 
-  def handle_call({ :client_connect }, {_, _}, %{ clients: clients, connects: connects } = state) do
+  def handle_call({ :client_connect }, {_, _}, %{ clients: clients, connects: connects, clients_peak: clients_peak } = state) do
     clients = clients + 1
     connects = connects + 1
+    clients_peak = if(clients > clients_peak, do: clients, else: clients_peak)
 
-    { :reply, :ok, %{ state | clients: clients, connects: connects } }
+    { :reply, :ok, %{ state | clients: clients, connects: connects, clients_peak: clients_peak } }
   end
 
   def handle_call({ :client_disconnect, _reason }, {_, _}, %{ clients: clients, disconnects: disconnects } = state) do
