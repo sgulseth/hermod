@@ -1,13 +1,13 @@
 defmodule Hermod.WebsocketHandler do
   @behaviour :cowboy_websocket
-
+  require Logger
   alias Hermod.RedisHandler
 
   @timeout 60000
 
   def init(req, state) do
     {:cowboy_websocket, req, state, %{
-        "idle_timeout" => @timeout
+        "idle_timeout": @timeout
       }
     }
   end
@@ -15,7 +15,7 @@ defmodule Hermod.WebsocketHandler do
   ## Callbacks
 
   def websocket_init(state) do
-    Hermod.StatsHandler.increment_clients()
+    Hermod.StatsHandler.client_connect()
     {:ok, state}
   end
 
@@ -41,9 +41,18 @@ defmodule Hermod.WebsocketHandler do
     {:reply, {:text, message}, state}
   end
 
-  def terminate(_reason, _, state) do
+  def terminate(reason, _, state) do
     RedisHandler.cleanup()
-    Hermod.StatsHandler.decrement_clients()
+    Hermod.StatsHandler.client_disconnect(reason)
+
+    case reason do
+      { :error, :closed } -> Logger.warn "Client brutally disconnected"
+      { :error, :badencoding } -> Logger.warn "Client disconnected, bad encoding"
+      { :error, :badframe } -> Logger.warn "Client disconnected, bad frame"
+      { :error, :Reason } -> Logger.warn "Client disconnected, socket error"
+      :timeout -> Logger.warn "Client disconnected, timeout"
+    end
+
     {:ok, state}
   end
 

@@ -10,12 +10,12 @@ defmodule Hermod.StatsHandler do
     GenServer.call(__MODULE__, { :get_stats })
   end
 
-  def increment_clients() do
-    GenServer.call(__MODULE__, { :increment_clients })
+  def client_connect() do
+    GenServer.call(__MODULE__, { :client_connect })
   end
 
-  def decrement_clients() do
-    GenServer.call(__MODULE__, { :decrement_clients })
+  def client_disconnect(reason) do
+    GenServer.call(__MODULE__, { :client_disconnect, reason })
   end
 
   def increment_channel_clients(channel) do
@@ -49,14 +49,14 @@ defmodule Hermod.StatsHandler do
     { :reply, :ok, state }
   end
 
-  def handle_call({ :increment_clients }, {_, _}, %{ clients: clients, connects: connects } = state) do
+  def handle_call({ :client_connect }, {_, _}, %{ clients: clients, connects: connects } = state) do
     clients = clients + 1
     connects = connects + 1
 
     { :reply, :ok, %{ state | clients: clients, connects: connects } }
   end
 
-  def handle_call({ :decrement_clients }, {_, _}, %{ clients: clients, disconnects: disconnects } = state) do
+  def handle_call({ :client_disconnect, _reason }, {_, _}, %{ clients: clients, disconnects: disconnects } = state) do
     clients = clients - 1
     disconnects = disconnects + 1
 
