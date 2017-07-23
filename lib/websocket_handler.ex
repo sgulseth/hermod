@@ -6,7 +6,10 @@ defmodule Hermod.WebsocketHandler do
   @timeout 60000
 
   def init(req, state) do
-    {:cowboy_websocket, req, state}
+    {:cowboy_websocket, req, state, %{
+        "idle_timeout" => @timeout
+      }
+    }
   end
 
   ## Callbacks
