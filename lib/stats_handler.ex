@@ -26,12 +26,19 @@ defmodule Hermod.StatsHandler do
     GenServer.call(__MODULE__, { :decrement_channel_clients, channel })
   end
 
+  def increment_messages(channel) do
+    GenServer.call(__MODULE__, { :increment_messages, channel })
+  end
+
   ## Callbacks
 
   def init(:ok) do
     state = %{
       clients: 0,
-      open_channels: %{}
+      connects: 0,
+      disconnects: 0,
+      messages: 0,
+      channels: %{}
     }
     {:ok, state}
   end
@@ -42,37 +49,52 @@ defmodule Hermod.StatsHandler do
     { :reply, :ok, state }
   end
 
-  def handle_call({ :increment_clients }, {_, _}, %{ clients: clients } = state) do
+  def handle_call({ :increment_clients }, {_, _}, %{ clients: clients, connects: connects } = state) do
     clients = clients + 1
+    connects = connects + 1
 
-    { :reply, :ok, %{ state | clients: clients } }
+    { :reply, :ok, %{ state | clients: clients, connects: connects } }
   end
 
-  def handle_call({ :decrement_clients }, {_, _}, %{ clients: clients } = state) do
+  def handle_call({ :decrement_clients }, {_, _}, %{ clients: clients, disconnects: disconnects } = state) do
     clients = clients - 1
+    disconnects = disconnects + 1
 
-    { :reply, :ok, %{ state | clients: clients } }
+    { :reply, :ok, %{ state | clients: clients, disconnects: disconnects } }
   end
 
-  def handle_call({ :increment_channel_clients, channel }, {_, _}, %{ open_channels: open_channels } = state) do
-    channelState = Map.get(open_channels, channel, Map.new(%{ clients: 0, time: DateTime.to_string(DateTime.utc_now()) }))
+  def handle_call({ :increment_channel_clients, channel }, {_, _}, %{ channels: channels } = state) do
+    channelState = Map.get(channels, channel, Map.new(%{ clients: 0, messages: 0, time: DateTime.to_string(DateTime.utc_now()) }))
 
     clients = Map.get(channelState, :clients, 0) + 1
     channelState = Map.put(channelState, :clients, clients)
 
-    open_channels = Map.put(open_channels, channel, channelState)
+    channels = Map.put(channels, channel, channelState)
 
-    { :reply, :ok, %{ state | open_channels: open_channels } }
+    { :reply, :ok, %{ state | channels: channels } }
   end
 
-  def handle_call({ :decrement_channel_clients, channel }, {_, _}, %{ open_channels: open_channels } = state) do
-    channelState = Map.get(open_channels, channel, Map.new(%{ clients: 0, time: DateTime.to_string(DateTime.utc_now()) }))
+  def handle_call({ :decrement_channel_clients, channel }, {_, _}, %{ channels: channels } = state) do
+    channelState = Map.get(channels, channel, Map.new())
 
     clients = Map.get(channelState, "clients", 0) - 1
     channelState = Map.put(channelState, "clients", clients)
 
-    open_channels = if(clients < 1, do: Map.delete(open_channels, channel), else: Map.put(open_channels, channel, channelState))
+    channels = if(clients < 1, do: Map.delete(channels, channel), else: Map.put(channels, channel, channelState))
 
-    { :reply, :ok, %{ state | open_channels: open_channels } }
+    { :reply, :ok, %{ state | channels: channels } }
+  end
+
+  def handle_call({ :increment_messages, channel }, {_, _}, %{ messages: messages, channels: channels } = state) do
+    messages = messages + 1
+
+    channelState = Map.get(channels, channel, nil)
+    channelState = if(channelState != nil, do: (
+      Map.put(channelState, :messages, Map.get(channelState, :messages, 0) + 1)
+    ), else: channelState)
+
+    channels = if(channelState != nil, do: Map.put(channels, channel, channelState), else: channels)
+
+    { :reply, :ok, %{ state | messages: messages, channels: channels } }
   end
 end

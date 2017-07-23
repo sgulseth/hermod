@@ -74,6 +74,8 @@ defmodule Hermod.RedisHandler do
     pubSubTopicClients = Map.get(channels, channel, MapSet.new)
     for pid <- pubSubTopicClients, do: send pid, message
 
+    Hermod.StatsHandler.increment_messages(channel)
+
     {:noreply, state}
   end
 
