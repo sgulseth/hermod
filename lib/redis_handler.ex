@@ -2,8 +2,6 @@ defmodule Hermod.RedisHandler do
   require Logger
   use GenServer
 
-  @prefix Hermod.Settings.prefix
-
   def start_link() do
     GenServer.start_link(__MODULE__, :ok, [name: __MODULE__])
   end
@@ -42,7 +40,7 @@ defmodule Hermod.RedisHandler do
     { :ok, new_channel, state } = add_pid_to_channel(pid, channel, state)
 
     if new_channel do
-      :ok = Redix.PubSub.subscribe(conn, "#{@prefix}:#{channel}", self())
+      :ok = Redix.PubSub.subscribe(conn, "#{Hermod.Settings.prefix}:#{channel}", self())
     end
 
     { :reply, :ok, state }
@@ -52,7 +50,7 @@ defmodule Hermod.RedisHandler do
     { :ok, empty_channel, state } = delete_pid_from_channel(pid, channel, state)
 
     if empty_channel do
-      :ok = Redix.PubSub.unsubscribe(conn, "#{@prefix}:#{channel}", self())
+      :ok = Redix.PubSub.unsubscribe(conn, "#{Hermod.Settings.prefix}:#{channel}", self())
     end
 
     { :reply, :ok, state }
@@ -70,7 +68,8 @@ defmodule Hermod.RedisHandler do
     { :reply, :ok, state }
   end
 
-  def handle_info({:redix_pubsub, _, :message, %{channel: "#{@prefix}:" <> channel, payload: message}}, %{channels: channels} = state) do
+  def handle_info({:redix_pubsub, _, :message, %{channel: channelWithPrefix, payload: message}}, %{channels: channels} = state) do
+    [_, channel] = String.split(channelWithPrefix, "#{Hermod.Settings.prefix}:", parts: 2)
     pubSubTopicClients = Map.get(channels, channel, MapSet.new)
     for pid <- pubSubTopicClients, do: send pid, message
 
