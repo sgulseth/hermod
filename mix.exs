@@ -14,7 +14,7 @@ defmodule Hermod.Mixfile do
   def application do
     [
       mod: { Hermod, [] },
-      applications: [:cowboy, :ranch, :logger, :redix_pubsub]
+      applications: [:cowboy, :ranch, :logger, :redix_pubsub, :poison, :env_helper]
     ]
   end
 
