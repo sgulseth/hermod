@@ -5,3 +5,5 @@ use Mix.Config
 config :logger,
   backends: [:console], # default, support for additional log sinks
   compile_time_purge_level: :info # purges logs with lower level than this
+
+import_config "#{Mix.env}.exs"
