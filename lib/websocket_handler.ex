@@ -51,6 +51,7 @@ defmodule Hermod.WebsocketHandler do
       { :error, :badframe } -> Logger.warn "Client disconnected, bad frame"
       { :error, :Reason } -> Logger.warn "Client disconnected, socket error"
       :timeout -> Logger.warn "Client disconnected, timeout"
+      _ -> :ok
     end
 
     {:ok, state}
