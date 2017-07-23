@@ -3,7 +3,7 @@ defmodule Hermod.Mixfile do
 
   def project do
     [app: :Hermod,
-     version: "0.0.3",
+     version: "0.0.1",
      elixir: ">= 1.0.0",
      deps: deps()]
   end
