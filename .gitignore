@@ -1,5 +1,6 @@
 /_build
-rel
+/rel/dev/
+/rel/prod/
 /deps
 erl_crash.dump
 *.ez
