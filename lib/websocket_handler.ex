@@ -37,6 +37,10 @@ defmodule Hermod.WebsocketHandler do
     {:reply, {:text, "unknown_command"}, state}
   end
 
+  def websocket_handle(_frame, _req, state) do
+    {:ok, state}
+  end
+
   def websocket_info(message, state) do
     {:reply, {:text, message}, state}
   end
