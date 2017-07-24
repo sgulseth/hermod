@@ -89,8 +89,8 @@ defmodule Hermod.StatsHandler do
   def handle_call({ :decrement_channel_clients, channel }, {_, _}, %{ channels: channels } = state) do
     channelState = Map.get(channels, channel, Map.new())
 
-    clients = Map.get(channelState, "clients", 0) - 1
-    channelState = Map.put(channelState, "clients", clients)
+    clients = Map.get(channelState, :clients, 0) - 1
+    channelState = Map.put(channelState, :clients, clients)
 
     channels = Map.put(channels, channel, channelState)
 
