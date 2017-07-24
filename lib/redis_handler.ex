@@ -124,6 +124,8 @@ defmodule Hermod.RedisHandler do
         redis_unsubscribe(conn, channel)
         Hermod.StatsHandler.delete_channel(channel)
         Logger.debug "Channel #{channel} empty, deleting"
+      else
+        Hermod.StatsHandler.decrement_channel_clients(channel)
       end
 
       if(MapSet.size(pids) > 0,
