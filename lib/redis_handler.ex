@@ -40,30 +40,20 @@ defmodule Hermod.RedisHandler do
     { :ok, new_channel, state } = add_pid_to_channel(pid, channel, state)
 
     if new_channel do
-      :ok = Redix.PubSub.subscribe(conn, "#{Hermod.Settings.prefix}:#{channel}", self())
+      :ok = redis_subscribe(conn, channel)
     end
 
     { :reply, :ok, state }
   end
 
-  def handle_call({:unsubscribe, channel}, {pid, _}, %{conn: conn} = state) do
-    { :ok, empty_channel, state } = delete_pid_from_channel(pid, channel, state)
-
-    if empty_channel do
-      :ok = Redix.PubSub.unsubscribe(conn, "#{Hermod.Settings.prefix}:#{channel}", self())
-    end
+  def handle_call({:unsubscribe, channel}, {pid, _}, state) do
+    { :ok, state } = delete_pid_from_channel(pid, channel, state)
 
     { :reply, :ok, state }
   end
 
-  def handle_call({ :cleanup }, {pid, _}, %{conn: conn} = state) do
-    { :ok, empty_channels, state } = cleanup_pid(pid, state)
-
-    # Unsubscribe from all the empty channels
-    # TODO: Not implemented in cleanup_pid
-    for channel <- empty_channels do
-      Redix.PubSub.unsubscribe(conn, channel, self())
-    end
+  def handle_call({ :cleanup }, {pid, _}, state) do
+    { :ok, state } = cleanup_pid(pid, state)
 
     { :reply, :ok, state }
   end
@@ -82,8 +72,18 @@ defmodule Hermod.RedisHandler do
     {:noreply, state}
   end
 
+  # Redis helpers
+
+  def redis_subscribe(conn, channel) do
+    Redix.PubSub.subscribe(conn, "#{Hermod.Settings.prefix}:#{channel}", self())
+  end
+
+  def redis_unsubscribe(conn, channel) do
+    Redix.PubSub.unsubscribe(conn, "#{Hermod.Settings.prefix}:#{channel}", self())
+  end
+
   # Websocket client helper
-  def add_pid_to_channel(pid, channel, %{channels: channels} = state) do
+  def add_pid_to_channel(pid, channel, %{ channels: channels } = state) do
     new_channel = Map.has_key?(channels, channel) == false
     channelPids = Map.get(channels, channel, MapSet.new)
 
@@ -95,30 +95,45 @@ defmodule Hermod.RedisHandler do
     { :ok, new_channel, %{state | channels: channels} }
   end
 
-  def delete_pid_from_channel(pid, channel, %{channels: channels} = state) do
+  def delete_pid_from_channel(pid, channel, %{ conn: conn, channels: channels } = state) do
     channelPids = Map.get(channels, channel, MapSet.new)
-    channels = Map.put(channels, channel, MapSet.delete(channelPids, pid))
+    channelPids = MapSet.delete(channelPids, pid)
+    channels = if(MapSet.size(channelPids) > 0, do: Map.put(channels, channel, channelPids), else: Map.delete(channels, channel))
 
     empty_channel = MapSet.size(Map.get(channels, channel, MapSet.new)) == 0
 
     Logger.debug "unsubscribing process to #{channel}"
-    Hermod.StatsHandler.decrement_channel_clients(channel)
 
-    { :ok, empty_channel, %{state | channels: channels} }
-  end
-
-  def cleanup_pid(pid, %{channels: channels} = state) do
-    empty_channels = MapSet.new
-    # Loop over each channel and remove the pid
-    channels = Enum.reduce Map.keys(channels), %{}, fn channel, map ->
-      pids = MapSet.delete(Map.get(channels, channel), pid)
-      if MapSet.size(pids) > 0 do
-        Map.put(map, channel, pids)
-      end
-
-      map
+    if empty_channel do
+      redis_unsubscribe(conn, channel)
+      Hermod.StatsHandler.delete_channel(channel)
+      Logger.debug "Channel #{channel} empty, deleting"
+    else
+      Hermod.StatsHandler.decrement_channel_clients(channel)
     end
 
-    { :ok, empty_channels, %{state | channels: channels} }
+    { :ok, %{state | channels: channels} }
+  end
+
+  def cleanup_pid(pid, %{ conn: conn, channels: channels } = state) do
+    # Loop over each channel and remove the pid
+    channels = Enum.reduce(Map.keys(channels), %{}, fn channel, map ->
+      pids = MapSet.delete(Map.get(channels, channel), pid)
+
+      if MapSet.size(pids) == 0 do
+        redis_unsubscribe(conn, channel)
+        Hermod.StatsHandler.delete_channel(channel)
+        Logger.debug "Channel #{channel} empty, deleting"
+      end
+
+      if(MapSet.size(pids) > 0,
+        do: Map.put(map, channel, pids),
+        else: Map.delete(map, channel)
+      )
+    end)
+
+    IO.inspect channels
+
+    { :ok, %{ state | channels: channels } }
   end
 end

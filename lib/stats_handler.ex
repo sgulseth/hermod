@@ -18,6 +18,10 @@ defmodule Hermod.StatsHandler do
     GenServer.call(__MODULE__, { :client_disconnect, reason })
   end
 
+  def delete_channel(channel) do
+    GenServer.call(__MODULE__, { :delete_channel, channel })
+  end
+
   def increment_channel_clients(channel) do
     GenServer.call(__MODULE__, { :increment_channel_clients, channel })
   end
@@ -65,6 +69,12 @@ defmodule Hermod.StatsHandler do
     { :reply, :ok, %{ state | clients: clients, disconnects: disconnects } }
   end
 
+  def handle_call({ :delete_channel, channel }, {_, _}, %{ channels: channels } = state) do
+    channels = Map.delete(channels, channel)
+
+    { :reply, :ok, %{ state | channels: channels } }
+  end
+
   def handle_call({ :increment_channel_clients, channel }, {_, _}, %{ channels: channels } = state) do
     channelState = Map.get(channels, channel, Map.new(%{ clients: 0, messages: 0, time: DateTime.to_string(DateTime.utc_now()) }))
 
@@ -82,7 +92,7 @@ defmodule Hermod.StatsHandler do
     clients = Map.get(channelState, "clients", 0) - 1
     channelState = Map.put(channelState, "clients", clients)
 
-    channels = if(clients < 1, do: Map.delete(channels, channel), else: Map.put(channels, channel, channelState))
+    channels = Map.put(channels, channel, channelState)
 
     { :reply, :ok, %{ state | channels: channels } }
   end
