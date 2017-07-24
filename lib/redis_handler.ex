@@ -36,12 +36,8 @@ defmodule Hermod.RedisHandler do
     {:reply, :ok, :ok}
   end
 
-  def handle_call({:subscribe, channel}, {pid, _}, %{ conn: conn } = state) do
-    { :ok, new_channel, state } = add_pid_to_channel(pid, channel, state)
-
-    if new_channel do
-      :ok = redis_subscribe(conn, channel)
-    end
+  def handle_call({:subscribe, channel}, {pid, _}, state) do
+    { :ok, state } = add_pid_to_channel(pid, channel, state)
 
     { :reply, :ok, state }
   end
@@ -83,16 +79,22 @@ defmodule Hermod.RedisHandler do
   end
 
   # Websocket client helper
-  def add_pid_to_channel(pid, channel, %{ channels: channels } = state) do
-    new_channel = Map.has_key?(channels, channel) == false
+  def add_pid_to_channel(pid, channel, %{ conn: conn, channels: channels } = state) do
+    if Map.has_key?(channels, channel) == false do
+      redis_subscribe(conn, channel)
+    end
+
     channelPids = Map.get(channels, channel, MapSet.new)
+    if MapSet.member?(channelPids, pid) do
+      { :ok, state }
+    else
+      Logger.debug "subscribing process to #{channel}"
+      Hermod.StatsHandler.increment_channel_clients(channel)
 
-    channels = if(MapSet.member?(channelPids, pid) == false, do: Map.put(channels, channel, MapSet.put(channelPids, pid)), else: channels)
+      channels = Map.put(channels, channel, MapSet.put(channelPids, pid))
 
-    Logger.debug "subscribing process to #{channel}"
-    Hermod.StatsHandler.increment_channel_clients(channel)
-
-    { :ok, new_channel, %{state | channels: channels} }
+      { :ok, %{state | channels: channels} }
+    end
   end
 
   def delete_pid_from_channel(pid, channel, %{ conn: conn, channels: channels } = state) do
@@ -118,20 +120,26 @@ defmodule Hermod.RedisHandler do
   def cleanup_pid(pid, %{ conn: conn, channels: channels } = state) do
     # Loop over each channel and remove the pid
     channels = Enum.reduce(Map.keys(channels), %{}, fn channel, map ->
-      pids = MapSet.delete(Map.get(channels, channel), pid)
+      channelState = Map.get(channels, channel)
 
-      if MapSet.size(pids) == 0 do
-        redis_unsubscribe(conn, channel)
-        Hermod.StatsHandler.delete_channel(channel)
-        Logger.debug "Channel #{channel} empty, deleting"
+      if (MapSet.member?(channelState, pid) == false) do
+        map
       else
         Hermod.StatsHandler.decrement_channel_clients(channel)
-      end
 
-      if(MapSet.size(pids) > 0,
-        do: Map.put(map, channel, pids),
-        else: Map.delete(map, channel)
-      )
+        channelState = MapSet.delete(channelState, pid)
+
+        if MapSet.size(channelState) == 0 do
+          redis_unsubscribe(conn, channel)
+          Hermod.StatsHandler.delete_channel(channel)
+          Logger.debug "Channel #{channel} empty, deleting"
+        end
+
+        if(MapSet.size(channelState) > 0,
+          do: Map.put(map, channel, channelState),
+          else: Map.delete(map, channel)
+        )
+      end
     end)
 
     { :ok, %{ state | channels: channels } }
