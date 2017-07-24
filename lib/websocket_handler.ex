@@ -46,11 +46,11 @@ defmodule Hermod.WebsocketHandler do
     Hermod.StatsHandler.client_disconnect(reason)
 
     case reason do
-      { :error, :closed } -> Logger.warn "Client brutally disconnected"
+      { :error, :closed } -> Logger.debug "Client brutally disconnected"
       { :error, :badencoding } -> Logger.warn "Client disconnected, bad encoding"
       { :error, :badframe } -> Logger.warn "Client disconnected, bad frame"
       { :error, :Reason } -> Logger.warn "Client disconnected, socket error"
-      :timeout -> Logger.warn "Client disconnected, timeout"
+      :timeout -> Logger.debug "Client disconnected, timeout"
       _ -> :ok
     end
 
