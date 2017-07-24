@@ -134,8 +134,6 @@ defmodule Hermod.RedisHandler do
       )
     end)
 
-    IO.inspect channels
-
     { :ok, %{ state | channels: channels } }
   end
 end
