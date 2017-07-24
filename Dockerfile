@@ -12,12 +12,10 @@ ENV MIX_ENV=prod
 RUN mix local.hex --force
 RUN mix local.rebar --force
 
-RUN mix deps.get
-RUN mix deps.compile
+RUN mix deps.get && mix deps.compile
 
 COPY . .
 
-RUN mix compile
-RUN mix release
+RUN mix compile && mix release
 
 CMD ["/usr/src/app/_build/prod/rel/Hermod/bin/Hermod", "foreground"]
