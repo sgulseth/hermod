@@ -119,8 +119,8 @@ defmodule Hermod.RedisHandler do
 
   def cleanup_pid(pid, %{ conn: conn, channels: channels } = state) do
     # Loop over each channel and remove the pid
-    channels = Enum.reduce(Map.keys(channels), %{}, fn channel, map ->
-      channelState = Map.get(channels, channel)
+    channels = Enum.reduce(Map.keys(channels), channels, fn channel, map ->
+      channelState = Map.get(map, channel)
 
       if (MapSet.member?(channelState, pid) == false) do
         map
