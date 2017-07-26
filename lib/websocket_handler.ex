@@ -19,10 +19,6 @@ defmodule Hermod.WebsocketHandler do
     {:ok, state}
   end
 
-  def websocket_handle({:text, "ping"}, state) do
-    {:reply, {:text, "pong"}, state}
-  end
-
   def websocket_handle({:text, "subscribe:" <> topic}, state) do
     RedisHandler.subscribe(topic)
 
@@ -33,11 +29,8 @@ defmodule Hermod.WebsocketHandler do
 
     {:ok, state}
   end
-  def websocket_handle({:text, _}, state) do
-    {:reply, {:text, "unknown_command"}, state}
-  end
 
-  def websocket_handle(_frame, _req, state) do
+  def websocket_handle(_frame, state) do
     {:ok, state}
   end
 
