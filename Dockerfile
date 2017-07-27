@@ -1,4 +1,6 @@
-FROM bitwalker/alpine-elixir-phoenix
+FROM elixir:1.4-slim
+
+RUN apt-get -y update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /usr/src/app
 
